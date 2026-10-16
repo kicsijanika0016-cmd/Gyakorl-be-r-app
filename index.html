@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#1a1a2e" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>Eredménytáblázat</title>
+  <script src="xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f0f1a;
+      --card: #1a1a2e;
+      --accent: #00d4aa;
+      --accent2: #4cc9f0;
+      --danger: #ff6b6b;
+      --warning: #ffd93d;
+      --text: #e8e8e8;
+      --muted: #888;
+      --input-bg: #252540;
+      --border: #333355;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 12px;
+      padding-bottom: 100px;
+      line-height: 1.4;
+    }
+    h1 { font-size: 1.25rem; text-align: center; margin-bottom: 10px; color: var(--accent); }
+    .card {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    label { font-size: 0.75rem; color: var(--muted); display: block; margin-bottom: 4px; }
+    input[type="text"], input[type="date"], input[type="number"], select {
+      width: 100%;
+      padding: 12px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--input-bg);
+      color: var(--text);
+      font-size: 1.05rem;
+      -webkit-appearance: none;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(0,212,170,0.25);
+    }
+    .row2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .mode-btns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 6px;
+    }
+    .mode-btn {
+      padding: 12px;
+      border-radius: 10px;
+      border: 2px solid var(--border);
+      background: var(--input-bg);
+      color: var(--text);
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+    .mode-btn.active {
+      border-color: var(--accent);
+      background: rgba(0,212,170,0.15);
+      color: var(--accent);
+    }
+    .round-header {
+      text-align: center;
+      margin-bottom: 12px;
+    }
+    .round-header .phase {
+      font-size: 0.8rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .round-header .num {
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: var(--accent2);
+    }
+    .round-header .progress {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    .input-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .input-grid .big-input {
+      text-align: center;
+      font-size: 1.4rem;
+      font-weight: 600;
+      padding: 16px 8px;
+    }
+    .result-box {
+      background: var(--input-bg);
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 12px;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      text-align: center;
+    }
+    .result-box .lbl { font-size: 0.7rem; color: var(--muted); }
+    .result-box .val { font-size: 1.15rem; font-weight: 700; }
+    .result-box .val.ok { color: var(--accent); }
+    .result-box .val.bad { color: var(--danger); }
+    .cumul-box {
+      background: linear-gradient(90deg, #00d4aa18, #4cc9f018);
+      border: 1px solid var(--accent);
+      border-radius: 12px;
+      padding: 14px;
+      text-align: center;
+      margin-bottom: 14px;
+    }
+    .cumul-box .lbl { font-size: 0.75rem; color: var(--muted); }
+    .cumul-box .val { font-size: 1.8rem; font-weight: 800; color: var(--accent); }
+    .proj-box {
+      background: linear-gradient(135deg, #1a2a3a, #1a1a2e);
+      border: 1px solid var(--accent2);
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 12px;
+      text-align: center;
+    }
+    .proj-box .lbl { font-size: 0.75rem; color: var(--muted); }
+    .proj-box .val { font-size: 1.3rem; font-weight: 700; color: var(--accent2); }
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+    button {
+      flex: 1;
+      min-width: 110px;
+      padding: 14px 10px;
+      border: none;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-primary { background: var(--accent); color: #000; }
+    .btn-next { background: var(--accent2); color: #000; }
+    .btn-secondary { background: var(--input-bg); color: var(--text); border: 1px solid var(--border); }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-new { background: #6c5ce7; color: #fff; }
+    .hint { font-size: 0.7rem; color: var(--muted); margin-top: 10px; text-align: center; }
+    .history {
+      max-height: 180px;
+      overflow-y: auto;
+      font-size: 0.8rem;
+    }
+    .history table { width: 100%; border-collapse: collapse; }
+    .history th { text-align: left; color: var(--muted); padding: 4px; font-size: 0.7rem; border-bottom: 1px solid var(--border); }
+    .history td { padding: 5px 4px; }
+    .history tr:nth-child(even) { background: rgba(255,255,255,0.03); }
+    .done-screen { text-align: center; padding: 20px 10px; }
+    .done-screen .big { font-size: 2.4rem; font-weight: 800; color: var(--accent); margin: 10px 0; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <h1>🎯 Eredménytáblázat</h1>
+
+  <!-- BEÁLLÍTÁS (kezdő képernyő) -->
+  <div id="setup" class="card">
+    <div class="row2" style="margin-bottom:12px;">
+      <div>
+        <label>Versenyző</label>
+        <input type="text" id="versenyzo" placeholder="Név" autocomplete="name" />
+      </div>
+      <div>
+        <label>Dátum</label>
+        <input type="date" id="datum" />
+      </div>
+    </div>
+    <label>Mód</label>
+    <div class="mode-btns">
+      <button type="button" class="mode-btn active" id="mode-both" onclick="setMode('both')">Gyakorló + Éles</button>
+      <button type="button" class="mode-btn" id="mode-eles" onclick="setMode('eles')">Csak Éles futam</button>
+    </div>
+    <div class="btn-row" style="margin-top:16px;">
+      <button class="btn-primary" onclick="startRun()">▶ Kezdés</button>
+    </div>
+  </div>
+
+  <!-- FUTAM KÉPERNYŐ -->
+  <div id="run" class="hidden">
+    <div class="card">
+      <div class="round-header">
+        <div class="phase" id="phase-label">Gyakorló</div>
+        <div class="num" id="round-num">1 / 3</div>
+        <div class="progress" id="progress-text"></div>
+      </div>
+
+      <div class="input-grid">
+        <div>
+          <label>Pont</label>
+          <input type="number" id="inp-pont" class="big-input" min="0" max="99" step="1" inputmode="numeric" enterkeyhint="next" placeholder="0" />
+        </div>
+        <div>
+          <label>Megtakarított idő</label>
+          <input type="number" id="inp-ido" class="big-input" step="0.01" inputmode="decimal" enterkeyhint="done" placeholder="0.00" />
+        </div>
+      </div>
+
+      <div class="result-box" id="live-result">
+        <div>
+          <div class="lbl">Rész</div>
+          <div class="val" id="live-resz">–</div>
+        </div>
+        <div>
+          <div class="lbl">Érvényesség</div>
+          <div class="val" id="live-erv">–</div>
+        </div>
+        <div>
+          <div class="lbl">Göngyölítve</div>
+          <div class="val" id="live-cumul">–</div>
+        </div>
+      </div>
+
+      <div class="cumul-box">
+        <div class="lbl">Aktuális göngyölített eredmény</div>
+        <div class="val" id="main-cumul">0.00</div>
+      </div>
+
+      <div class="proj-box hidden" id="proj-box">
+        <div class="lbl">Ha az átlagot tartod a 9 körre →</div>
+        <div class="val" id="proj-val">–</div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-secondary" id="btn-back" onclick="prevRound()">← Vissza</button>
+        <button class="btn-next" id="btn-next" onclick="nextRound()">Következő →</button>
+      </div>
+    </div>
+
+    <!-- Előzmények -->
+    <div class="card">
+      <div style="font-size:0.85rem; font-weight:600; margin-bottom:8px; color:var(--muted);">Eddigi körök</div>
+      <div class="history">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Pont</th>
+              <th>Idő</th>
+              <th>Rész</th>
+              <th>Göngy.</th>
+              <th>Érv.</th>
+            </tr>
+          </thead>
+          <tbody id="history-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- KÉSZ KÉPERNYŐ -->
+  <div id="done" class="hidden">
+    <div class="card done-screen">
+      <div style="font-size:0.9rem; color:var(--muted);">Végeredmény</div>
+      <div class="big" id="final-result">0.00</div>
+      <div class="row2" style="margin:16px 0;">
+        <div>
+          <div class="lbl" style="color:var(--muted); font-size:0.75rem;">Össz lőtt pont</div>
+          <div style="font-size:1.4rem; font-weight:700; color:var(--accent);" id="final-pont">0</div>
+        </div>
+        <div>
+          <div class="lbl" style="color:var(--muted); font-size:0.75rem;">Összes megtak. idő</div>
+          <div style="font-size:1.4rem; font-weight:700; color:var(--accent);" id="final-ido">0.00</div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn-primary" onclick="excelMentes()">📥 Excel mentés</button>
+      </div>
+      <div class="btn-row">
+        <button class="btn-new" onclick="ujFutam()">🆕 Új futam</button>
+        <button class="btn-secondary" onclick="backToSetup()">Beállítások</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="font-size:0.85rem; font-weight:600; margin-bottom:8px; color:var(--muted);">Összes kör</div>
+      <div class="history" style="max-height:260px;">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Pont</th>
+              <th>Idő</th>
+              <th>Rész</th>
+              <th>Göngy.</th>
+              <th>Érv.</th>
+            </tr>
+          </thead>
+          <tbody id="final-history"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <p class="hint">Chrome → Telepítés / Kezdőképernyőhöz adás = app<br>
+  Számmezőknél át lehet váltani betűkre is.</p>
+
+  <script>
+    const GYAKORLO_KOROK = 3;
+    const ELES_KOROK = 9;
+
+    let mode = 'both';           // 'both' | 'eles'
+    let phase = 'gyak';          // 'gyak' | 'eles'
+    let roundIdx = 0;            // 0-based index within current phase
+    let gyakResults = [];        // {pont, ido, resz, valid, cumul}
+    let elesResults = [];
+
+    document.getElementById('datum').valueAsDate = new Date();
+
+    function setMode(m) {
+      mode = m;
+      document.getElementById('mode-both').classList.toggle('active', m === 'both');
+      document.getElementById('mode-eles').classList.toggle('active', m === 'eles');
+    }
+
+    function startRun() {
+      gyakResults = [];
+      elesResults = [];
+      if (mode === 'both') {
+        phase = 'gyak';
+        roundIdx = 0;
+      } else {
+        phase = 'eles';
+        roundIdx = 0;
+      }
+      document.getElementById('setup').classList.add('hidden');
+      document.getElementById('done').classList.add('hidden');
+      document.getElementById('run').classList.remove('hidden');
+      showCurrentRound();
+      document.getElementById('inp-pont').focus();
+    }
+
+    function getPhaseMax() {
+      return phase === 'gyak' ? GYAKORLO_KOROK : ELES_KOROK;
+    }
+
+    function getCurrentResults() {
+      return phase === 'gyak' ? gyakResults : elesResults;
+    }
+
+    function showCurrentRound() {
+      const max = getPhaseMax();
+      const results = getCurrentResults();
+      const existing = results[roundIdx];
+
+      document.getElementById('phase-label').textContent = phase === 'gyak' ? 'Gyakorló' : 'Éles futam';
+      document.getElementById('round-num').textContent = `${roundIdx + 1} / ${max}`;
+      document.getElementById('progress-text').textContent =
+        phase === 'gyak'
+          ? (mode === 'both' ? 'Utána jön az éles futam' : '')
+          : `Éles ${roundIdx + 1}. kör`;
+
+      document.getElementById('inp-pont').value = existing ? existing.pont : '';
+      document.getElementById('inp-ido').value = existing ? existing.ido : '';
+
+      updateLivePreview();
+      renderHistory();
+      updateProjection();
+
+      // Vissza gomb láthatósága
+      const atVeryStart = (phase === 'gyak' && roundIdx === 0) || (phase === 'eles' && roundIdx === 0 && mode === 'eles');
+      document.getElementById('btn-back').style.visibility = atVeryStart ? 'hidden' : 'visible';
+
+      document.getElementById('btn-next').textContent =
+        (phase === 'eles' && roundIdx === ELES_KOROK - 1) ? 'Befejezés ✓' :
+        (phase === 'gyak' && roundIdx === GYAKORLO_KOROK - 1) ? 'Éles futam →' : 'Következő →';
+    }
+
+    function parseNum(val) {
+      if (val === '' || val === null || val === undefined) return null;
+      const n = parseFloat(val);
+      return isNaN(n) ? null : n;
+    }
+
+    function calcPartial(pont, ido, isGyak) {
+      const resz = pont + ido;
+      const valid = isGyak ? (ido > 0) : (ido >= 0);
+      return { pont, ido, resz, valid };
+    }
+
+    function recomputeCumul(list) {
+      let cum = 0;
+      return list.map(r => {
+        if (r && r.valid) cum += r.resz;
+        return r ? { ...r, cumul: cum } : r;
+      });
+    }
+
+    function updateLivePreview() {
+      const pont = parseNum(document.getElementById('inp-pont').value);
+      const ido = parseNum(document.getElementById('inp-ido').value);
+      const reszEl = document.getElementById('live-resz');
+      const ervEl = document.getElementById('live-erv');
+      const cumulEl = document.getElementById('live-cumul');
+      const mainCumul = document.getElementById('main-cumul');
+
+      const results = getCurrentResults();
+      let prevCumul = 0;
+      for (let i = 0; i < roundIdx; i++) {
+        if (results[i] && results[i].valid) prevCumul = results[i].cumul;
+      }
+
+      if (pont === null || ido === null) {
+        reszEl.textContent = '–';
+        ervEl.textContent = '–';
+        ervEl.className = 'val';
+        cumulEl.textContent = '–';
+        mainCumul.textContent = prevCumul.toFixed(2);
+        return;
+      }
+
+      const isGyak = phase === 'gyak';
+      const { resz, valid } = calcPartial(pont, ido, isGyak);
+      const newCumul = valid ? prevCumul + resz : prevCumul;
+
+      reszEl.textContent = resz.toFixed(2);
+      ervEl.textContent = valid ? (isGyak ? 'érvényes' : 'Érvényes') : 'Kifutott';
+      ervEl.className = 'val ' + (valid ? 'ok' : 'bad');
+      cumulEl.textContent = newCumul.toFixed(2);
+      mainCumul.textContent = newCumul.toFixed(2);
+    }
+
+    document.getElementById('inp-pont').addEventListener('input', () => {
+      updateLivePreview();
+      updateProjection();
+    });
+    document.getElementById('inp-ido').addEventListener('input', () => {
+      updateLivePreview();
+      updateProjection();
+    });
+
+    function saveCurrentRound() {
+      const pont = parseNum(document.getElementById('inp-pont').value);
+      const ido = parseNum(document.getElementById('inp-ido').value);
+      if (pont === null || ido === null) {
+        alert('Írd be a pontot és a megtakarított időt!');
+        return false;
+      }
+      const isGyak = phase === 'gyak';
+      const partial = calcPartial(pont, ido, isGyak);
+      const results = getCurrentResults().slice();
+      results[roundIdx] = partial;
+      const recomputed = recomputeCumul(results);
+      if (isGyak) gyakResults = recomputed;
+      else elesResults = recomputed;
+      return true;
+    }
+
+    function nextRound() {
+      if (!saveCurrentRound()) return;
+
+      const max = getPhaseMax();
+      if (roundIdx < max - 1) {
+        roundIdx++;
+        showCurrentRound();
+        document.getElementById('inp-pont').focus();
+        return;
+      }
+
+      // Phase vége
+      if (phase === 'gyak' && mode === 'both') {
+        phase = 'eles';
+        roundIdx = 0;
+        showCurrentRound();
+        document.getElementById('inp-pont').focus();
+        return;
+      }
+
+      finishRun();
+    }
+
+    function prevRound() {
+      const pont = parseNum(document.getElementById('inp-pont').value);
+      const ido = parseNum(document.getElementById('inp-ido').value);
+      if (pont !== null && ido !== null) {
+        saveCurrentRound();
+      }
+
+      if (roundIdx > 0) {
+        roundIdx--;
+        showCurrentRound();
+        return;
+      }
+      if (phase === 'eles' && mode === 'both') {
+        phase = 'gyak';
+        roundIdx = GYAKORLO_KOROK - 1;
+        showCurrentRound();
+      }
+    }
+
+    function updateProjection() {
+      const box = document.getElementById('proj-box');
+      if (phase !== 'eles') {
+        box.classList.add('hidden');
+        return;
+      }
+      const validPartials = [];
+      elesResults.forEach((r, i) => {
+        if (i < roundIdx && r && r.valid) validPartials.push(r.resz);
+      });
+      const pont = parseNum(document.getElementById('inp-pont').value);
+      const ido = parseNum(document.getElementById('inp-ido').value);
+      if (pont !== null && ido !== null) {
+        const { resz, valid } = calcPartial(pont, ido, false);
+        if (valid) validPartials.push(resz);
+      }
+
+      if (validPartials.length < 1) {
+        box.classList.add('hidden');
+        return;
+      }
+
+      const filled = validPartials.length;
+      const remaining = ELES_KOROK - filled;
+      if (remaining <= 0) {
+        box.classList.add('hidden');
+        return;
+      }
+
+      const avg = validPartials.reduce((a, b) => a + b, 0) / validPartials.length;
+      let currentCum = 0;
+      elesResults.forEach((r, i) => {
+        if (i < roundIdx && r && r.valid) currentCum = r.cumul;
+      });
+      if (pont !== null && ido !== null) {
+        const { resz, valid } = calcPartial(pont, ido, false);
+        if (valid) currentCum += resz;
+      }
+
+      const projected = currentCum + remaining * avg;
+      document.getElementById('proj-val').textContent = projected.toFixed(2);
+      box.classList.remove('hidden');
+    }
+
+    function renderHistory() {
+      const tbody = document.getElementById('history-body');
+      tbody.innerHTML = '';
+      if (mode === 'both') {
+        gyakResults.forEach((r, i) => {
+          if (!r) return;
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>G${i+1}</td>
+            <td>${r.pont}</td>
+            <td>${Number(r.ido).toFixed(2)}</td>
+            <td>${r.resz.toFixed(2)}</td>
+            <td>${r.cumul.toFixed(2)}</td>
+            <td style="color:${r.valid ? 'var(--accent)' : 'var(--danger)'}">${r.valid ? '✓' : '✗'}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+      elesResults.forEach((r, i) => {
+        if (!r) return;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>É${i+1}</td>
+          <td>${r.pont}</td>
+          <td>${Number(r.ido).toFixed(2)}</td>
+          <td>${r.resz.toFixed(2)}</td>
+          <td>${r.cumul.toFixed(2)}</td>
+          <td style="color:${r.valid ? 'var(--accent)' : 'var(--danger)'}">${r.valid ? '✓' : '✗'}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function finishRun() {
+      document.getElementById('run').classList.add('hidden');
+      document.getElementById('done').classList.remove('hidden');
+
+      let final = 0;
+      let pontSum = 0;
+      let idoSum = 0;
+      elesResults.forEach(r => {
+        if (r && r.valid) {
+          final = r.cumul;
+          pontSum += r.pont;
+          idoSum += r.ido;
+        }
+      });
+
+      document.getElementById('final-result').textContent = final.toFixed(2);
+      document.getElementById('final-pont').textContent = pontSum.toFixed(0);
+      document.getElementById('final-ido').textContent = idoSum.toFixed(2);
+
+      const tbody = document.getElementById('final-history');
+      tbody.innerHTML = '';
+      if (mode === 'both') {
+        gyakResults.forEach((r, i) => {
+          if (!r) return;
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>G${i+1}</td>
+            <td>${r.pont}</td>
+            <td>${Number(r.ido).toFixed(2)}</td>
+            <td>${r.resz.toFixed(2)}</td>
+            <td>${r.cumul.toFixed(2)}</td>
+            <td style="color:${r.valid ? 'var(--accent)' : 'var(--danger)'}">${r.valid ? 'érvényes' : 'kifutott'}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+      elesResults.forEach((r, i) => {
+        if (!r) return;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>É${i+1}</td>
+          <td>${r.pont}</td>
+          <td>${Number(r.ido).toFixed(2)}</td>
+          <td>${r.resz.toFixed(2)}</td>
+          <td>${r.cumul.toFixed(2)}</td>
+          <td style="color:${r.valid ? 'var(--accent)' : 'var(--danger)'}">${r.valid ? 'Érvényes' : 'Kifutott'}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function excelMentes() {
+      if (typeof XLSX === 'undefined') {
+        alert('Az Excel könyvtár nem töltődött be.');
+        return;
+      }
+      const versenyzo = document.getElementById('versenyzo').value || 'Névtelen';
+      const datum = document.getElementById('datum').value || new Date().toISOString().slice(0, 10);
+
+      const rows = [];
+      rows.push(['Versenyző', versenyzo]);
+      rows.push(['Dátum', datum]);
+      rows.push(['Mód', mode === 'both' ? 'Gyakorló + Éles' : 'Csak Éles futam']);
+      rows.push([]);
+      rows.push(['Típus', 'Kör', 'Pont', 'Megtakarított idő', 'Rész eredmény', 'Göngyölítve', 'Érvényesség']);
+
+      if (mode === 'both') {
+        gyakResults.forEach((r, i) => {
+          if (!r) return;
+          rows.push(['Gyakorló', i + 1, r.pont, r.ido, +r.resz.toFixed(2), +r.cumul.toFixed(2), r.valid ? 'érvényes' : 'kifutott']);
+        });
+      }
+      elesResults.forEach((r, i) => {
+        if (!r) return;
+        rows.push(['Éles', i + 1, r.pont, r.ido, +r.resz.toFixed(2), +r.cumul.toFixed(2), r.valid ? 'Érvényes' : 'Kifutott']);
+      });
+
+      rows.push([]);
+      let final = 0, pontSum = 0, idoSum = 0;
+      elesResults.forEach(r => {
+        if (r && r.valid) {
+          final = r.cumul;
+          pontSum += r.pont;
+          idoSum += r.ido;
+        }
+      });
+      rows.push(['VÉGEREDMÉNY', final.toFixed(2)]);
+      rows.push(['Össz lőtt pont', pontSum]);
+      rows.push(['Összes megtakarított idő', +idoSum.toFixed(2)]);
+
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Eredmény');
+
+      const safeName = versenyzo.replace(/[^a-zA-Z0-9áéíóöőúüűÁÉÍÓÖŐÚÜŰ\s-]/g, '').trim() || 'eredmeny';
+      const fileName = `${safeName}_${datum}.xlsx`;
+      const cap = window.Capacitor;
+      if (cap && cap.isNativePlatform && cap.isNativePlatform()) {
+        // Androidon: mentés a gyorsítótárba, majd megosztás (Drive, Gmail, Fájlok stb.)
+        const b64 = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+        const { Filesystem, Share } = cap.Plugins;
+        Filesystem.writeFile({ path: fileName, data: b64, directory: 'CACHE' })
+          .then(r => Share.share({ title: fileName, url: r.uri, dialogTitle: 'Excel mentése / küldése' }))
+          .catch(e => { if (!String(e).includes('cancel')) alert('Mentési hiba: ' + e); });
+      } else {
+        XLSX.writeFile(wb, fileName);
+      }
+    }
+
+    function ujFutam() {
+      if (!confirm('Új futam? A jelenlegi adatok törlődnek (ha nem mentetted Excelbe).')) return;
+      document.getElementById('versenyzo').value = '';
+      document.getElementById('datum').valueAsDate = new Date();
+      gyakResults = [];
+      elesResults = [];
+      document.getElementById('done').classList.add('hidden');
+      document.getElementById('run').classList.add('hidden');
+      document.getElementById('setup').classList.remove('hidden');
+      document.getElementById('versenyzo').focus();
+    }
+
+    function backToSetup() {
+      document.getElementById('done').classList.add('hidden');
+      document.getElementById('run').classList.add('hidden');
+      document.getElementById('setup').classList.remove('hidden');
+    }
+  </script>
+</body>
+</html>
