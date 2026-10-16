@@ -15,9 +15,15 @@ jobs:
           distribution: temurin
           java-version: 17
       - name: www mappa elokeszitese
-        run: mkdir -p www && cp index.html xlsx.full.min.js www/
+        run: mkdir -p www && cp index.html www/
       - run: npm install
       - run: npx cap add android
+      - name: Jogosultsagok
+        run: |
+          sed -i '/<\/manifest>/i\    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />' android/app/src/main/AndroidManifest.xml
+          sed -i '/<\/manifest>/i\    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />' android/app/src/main/AndroidManifest.xml
+          sed -i '/<\/manifest>/i\    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />' android/app/src/main/AndroidManifest.xml
+          sed -i '/<\/manifest>/i\    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />' android/app/src/main/AndroidManifest.xml
       - run: npx cap sync android
       - name: Debug APK epitese
         run: cd android && chmod +x gradlew && ./gradlew assembleDebug
