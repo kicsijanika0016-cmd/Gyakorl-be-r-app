@@ -10,6 +10,7 @@ import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.Base64;
 
+import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -21,6 +22,9 @@ import androidx.core.content.FileProvider;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
+
+import org.json.JSONObject;
 
 @CapacitorPlugin(name = "JpegSaver")
 public class JpegSaverPlugin extends Plugin {
@@ -81,6 +85,43 @@ public class JpegSaverPlugin extends Plugin {
             Intent i = new Intent(Intent.ACTION_SEND);
             i.setType("image/jpeg");
             i.putExtra(Intent.EXTRA_STREAM, uri);
+            i.setPackage(pkg);
+            i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(i);
+            call.resolve();
+        } catch (ActivityNotFoundException e) {
+            call.reject("Az app nincs telepítve");
+        } catch (Exception e) {
+            call.reject("Küldési hiba: " + e.getMessage());
+        }
+    }
+
+    @PluginMethod
+    public void sendMany(PluginCall call) {
+        String pkg = call.getString("pkg");
+        JSArray files = call.getArray("files");
+        if (pkg == null || files == null || files.length() == 0) {
+            call.reject("Hiányzó adat");
+            return;
+        }
+        try {
+            ArrayList<Uri> uris = new ArrayList<>();
+            for (int k = 0; k < files.length(); k++) {
+                JSONObject o = files.getJSONObject(k);
+                byte[] bytes = Base64.decode(o.getString("data"), Base64.DEFAULT);
+                File f = new File(getContext().getCacheDir(), o.getString("name"));
+                FileOutputStream fos = new FileOutputStream(f);
+                fos.write(bytes);
+                fos.close();
+                uris.add(FileProvider.getUriForFile(getContext(), getContext().getPackageName() + ".fileprovider", f));
+            }
+            Intent i = new Intent(uris.size() > 1 ? Intent.ACTION_SEND_MULTIPLE : Intent.ACTION_SEND);
+            i.setType("image/jpeg");
+            if (uris.size() > 1) {
+                i.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
+            } else {
+                i.putExtra(Intent.EXTRA_STREAM, uris.get(0));
+            }
             i.setPackage(pkg);
             i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
             getContext().startActivity(i);

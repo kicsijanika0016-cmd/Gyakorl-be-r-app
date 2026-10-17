@@ -11,6 +11,7 @@ h1{font-size:1.25rem;text-align:center;margin-bottom:10px;color:var(--ac)}
 label,.mu{font-size:.75rem;color:var(--mu)}
 label{display:block;margin-bottom:4px}
 input{width:100%;padding:11px 10px;border-radius:10px;border:1px solid var(--bd);background:var(--in);color:var(--tx);font-size:1.05rem}
+select{width:100%;padding:12px 10px;border-radius:10px;border:1px solid var(--bd);background:var(--in);color:var(--tx);font-size:1.05rem}
 input:focus{outline:none;border-color:var(--ac)}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 button{flex:1;min-width:100px;padding:13px 10px;border:0;border-radius:12px;font-size:.95rem;font-weight:700;cursor:pointer}
@@ -40,7 +41,7 @@ td{padding:7px 4px}tr:nth-child(even){background:rgba(255,255,255,.03)}
   <label style="margin-top:14px">Versenyzők neve (indulási sorrendben)</label>
   <div id="names"></div>
   <label style="margin-top:12px">Mód</label>
-  <div class="g2"><button class="m on" id="m-both" onclick="setMode('both')">Gyakorló + Éles</button><button class="m" id="m-eles" onclick="setMode('eles')">Csak Éles</button></div>
+  <div class="g2"><button class="m on" id="m-both" onclick="setMode('both')">Gyakorló + Éles futam</button><button class="m" id="m-eles" onclick="setMode('eles')">Csak éles futam</button></div>
   <label style="margin-top:12px">Számolás</label>
   <div class="g2"><button class="m on" id="t-ido" onclick="setTime(true)">Pont + Idő</button><button class="m" id="t-pont" onclick="setTime(false)">Csak pont</button></div>
   <div class="row"><button class="p" onclick="start()">▶ Kezdés</button></div>
@@ -62,8 +63,10 @@ td{padding:7px 4px}tr:nth-child(even){background:rgba(255,255,255,.03)}
   <div class="card">
     <div class="mu" style="font-weight:600;margin-bottom:8px">🏆 Végeredmény</div>
     <table><thead><tr><th>#</th><th>Név</th><th>Pont</th><th id="fti">Idő</th><th>Végered.</th></tr></thead><tbody id="fb"></tbody></table>
-    <div class="row"><button class="p" onclick="saveJpg()">📷 Mentés JPEG-be</button></div>
-    <div class="row hidden" id="bs"><button class="n" onclick="sendTo('com.facebook.orca','Messenger')">💬 Küldés Messengerrel</button><button class="v" onclick="sendTo('com.viber.voip','Viber')">📞 Küldés Viberrel</button></div>
+    <label style="margin-top:14px">Kinek az eredményét mentsük / küldjük?</label>
+    <select id="who"></select>
+    <div class="row"><button class="p" onclick="doSave()">📷 Mentés a telefonra</button></div>
+    <div class="row hidden" id="bs"><button class="n" onclick="doSend('com.facebook.orca','Messenger')">💬 Küldés Messengerrel</button><button class="v" onclick="doSend('com.viber.voip','Viber')">📞 Küldés Viberrel</button></div>
     <div class="row"><button class="s" onclick="back()">← Utolsó kör</button><button class="v" onclick="restart()">🆕 Új futam</button></div>
   </div>
 </div>
@@ -120,7 +123,7 @@ function refresh(){
   const g=ph=='gyak',e=(D[ph][ri]||[])[ci];
   $('lv').innerHTML=e?`${useTime?`Rész <b>${f2(e.r)}</b> · `:''}<span class="${e.v?'ok':'bad'}">${e.v?'Érvényes':'Kifutott'}</span> · Göngy. <b>${f2(cum(ph,ci,ri).s)}</b>`:'–';
   $('rt').textContent=g?'Gyakorló állás':'Éles állás';
-  $('rh').innerHTML=`<tr><th>#</th><th>Név</th><th>Göngy.</th>${g?'':`<th>${EK} körre</th>`}</tr>`;
+  $('rh').innerHTML=`<tr><th>#</th><th>Név</th><th>Göngy.</th>${g?'':`<th>Átlagod, ha így lősz továbbra is</th>`}</tr>`;
   const a=names.map((_,c)=>{const q=cum(ph,c,ri);return{c,s:q.s,n:q.n}}).sort((x,y)=>y.s-x.s);
   a.forEach((x,i)=>x.pl=i&&eq(a[i-1].s,x.s)?a[i-1].pl:i+1);
   $('rb').innerHTML=a.map(x=>`<tr><td>${x.pl}.</td><td>${esc(nm(x.c))}</td><td><b>${f2(x.s)}</b></td>${g?'':`<td class="mu">${x.n?f2(x.s+(EK-x.n)*x.s/x.n):'–'}</td>`}</tr>`).join('');
@@ -151,6 +154,7 @@ function finish(){
   $('fti').style.display=useTime?'':'none';
   $('fb').innerHTML=ranking().map(x=>`<tr><td>${['🥇','🥈','🥉'][x.pl-1]||x.pl+'.'}</td><td>${esc(nm(x.c))}</td><td>${x.pp}</td>${useTime?`<td>${f2(x.ii)}</td>`:''}<td class="ok"><b>${f2(x.s)}</b></td></tr>`).join('');
   if(native)$('bs').classList.remove('hidden');
+  $('who').innerHTML='<option value="all">📋 Összesített sorrend</option>'+(names.length>1?`<option value="each">👥 Mindenki külön (${names.length} kép)</option>`:'')+ranking().map(r=>`<option value="${r.c}">${r.pl}. ${esc(nm(r.c))}</option>`).join('');
 }
 function back(){show('run');ph='eles';ri=EK-1;ci=names.length-1;render()}
 function restart(){if(confirm('Új futam? A jelenlegi eredmények törlődnek (ha nem mentetted JPEG-be).'))show('setup')}
@@ -166,7 +170,7 @@ function img(){
   const T=(t,px,py,font,col,al)=>{x.font=font+' '+F;x.fillStyle=col;x.textAlign=al||'left';x.fillText(t,px,py)};
   x.fillStyle='#0f0f1a';x.fillRect(0,0,W,H);
   T('Eredménytáblázat',m,52,'bold 34px','#00d4aa');
-  T(`${$('datum').value||''} · ${both?'Gyakorló + Éles':'Csak Éles'} · ${names.length} versenyző${useTime?'':' · csak pont'}`,m,90,'20px','#aaa');
+  T(`${$('datum').value||''} · ${both?'Gyakorló + Éles futam':'Csak éles futam'} · ${names.length} versenyző${useTime?'':' · csak pont'}`,m,90,'20px','#aaa');
   const tx=m+pw+nw+cols.length*cw;
   let y=110;
   x.fillStyle='#252540';x.fillRect(m,y,W-2*m,rh);
@@ -199,24 +203,69 @@ const nat=async(pl,me,o)=>{
   throw new Error('a natív híd nem érhető el');
 };
 const fname=()=>`eredmeny_${$('datum').value||'futam'}.jpg`;
-async function saveJpg(){
-  if(!native){
-    img().toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=fname();document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000)},'image/jpeg',.92);
-    return;
-  }
-  try{
-    const t=new Date().toTimeString().slice(0,8).replace(/:/g,'');
-    const b64=img().toDataURL('image/jpeg',.92).split(',')[1];
-    await nat('JpegSaver','save',{data:b64,name:fname().replace('.jpg','')+'_'+t+'.jpg'});
-    alert('✅ Elmentve a telefonra: Galéria → Eredmenytablazat album.');
-  }catch(e){
-    alert('A mentés nem sikerült: '+((e&&e.message)||e));
-  }
+async function putImg(cv,name){
+  if(native){await nat('JpegSaver','save',{data:cv.toDataURL('image/jpeg',.92).split(',')[1],name});return}
+  await new Promise(res=>cv.toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);setTimeout(res,400)},'image/jpeg',.92));
 }
-async function sendTo(pkg,label){
+const stamp=()=>new Date().toTimeString().slice(0,8).replace(/:/g,'');
+const slug=x=>x.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z0-9]+/g,'_').replace(/^_|_$/g,'')||'versenyzo';
+function items(){
+  const v=$('who').value,d=$('datum').value||'futam',rk=ranking();
+  const one=r=>({cv:imgOne(r.c),name:`eredmeny_${d}_${r.pl}_${slug(nm(r.c))}`});
+  if(v=='all')return [{cv:img(),name:`eredmeny_${d}_osszesitett`}];
+  if(v=='each')return rk.map(one);
+  return [one(rk.find(r=>r.c==+v))];
+}
+async function doSave(){
+  const t=stamp(),L=items();
   try{
-    const b64=img().toDataURL('image/jpeg',.92).split(',')[1];
-    await nat('JpegSaver','sendTo',{data:b64,name:fname(),pkg});
+    for(const it of L)await putImg(it.cv,it.name+'_'+t+'.jpg');
+    alert(native?`✅ ${L.length} kép elmentve a telefonra: Galéria → Eredmenytablazat album.`:`✅ ${L.length} kép letöltve.`);
+  }catch(e){alert('A mentés nem sikerült: '+((e&&e.message)||e))}
+}
+async function doSend(pkg,label){
+  const t=stamp(),L=items();
+  try{
+    await nat('JpegSaver','sendMany',{pkg,files:L.map(it=>({data:it.cv.toDataURL('image/jpeg',.92).split(',')[1],name:it.name+'_'+t+'.jpg'}))});
   }catch(e){alert(label+' nem nyitható meg ('+((e&&e.message)||e)+'). Telepítve van a telefonon?')}
+}
+function imgOne(c){
+  const me=ranking().find(r=>r.c==c),both=mode=='both',secs=[];
+  if(both)secs.push(['Gyakorló','gyak',GK]);secs.push(['Éles','eles',EK]);
+  const cols=useTime?['Kör','Pont','Idő','Rész','Göngyölt']:['Kör','Pont','Göngyölt'];
+  const W=900,m=36,rh=44,cw=(W-2*m)/cols.length,nr=secs.reduce((a,x)=>a+x[2]+1,0),H=160+rh+nr*rh+140;
+  const cv=document.createElement('canvas');cv.width=W;cv.height=H;const x=cv.getContext('2d');
+  const F='"Segoe UI",Roboto,Arial,sans-serif';
+  const T=(t,px,py,font,col,al)=>{x.font=font+' '+F;x.fillStyle=col;x.textAlign=al||'left';x.fillText(t,px,py)};
+  const cx=k=>m+cw*(k+.5);
+  x.fillStyle='#0f0f1a';x.fillRect(0,0,W,H);
+  T(nm(c),m,62,'bold 42px','#00d4aa');
+  T(`${$('datum').value||''} · ${both?'Gyakorló + Éles futam':'Csak éles futam'}${useTime?'':' · csak pont'}`,m,98,'20px','#aaa');
+  T(`${me.pl}. hely a(z) ${names.length} versenyzőből`,m,138,'bold 26px',['#ffd93d','#cfd8dc','#e29a5b'][me.pl-1]||'#e8e8e8');
+  let y=160;
+  x.fillStyle='#252540';x.fillRect(m,y,W-2*m,rh);
+  cols.forEach((h,k)=>T(h,cx(k),y+30,'bold 18px','#888','center'));
+  y+=rh;
+  secs.forEach(sec=>{
+    const g=sec[1]=='gyak';
+    T(sec[0],m+8,y+30,'bold 20px',g?'#777':'#4cc9f0');y+=rh;
+    for(let k=0;k<sec[2];k++){
+      const e=D[sec[1]][k]&&D[sec[1]][k][c];
+      if(k%2){x.fillStyle='rgba(255,255,255,.04)';x.fillRect(m,y,W-2*m,rh)}
+      const col=g?'#99a':'#e8e8e8';
+      T((k+1)+'.',cx(0),y+30,'20px',col,'center');
+      if(e){
+        let v=[String(e.p)];if(useTime)v.push(f2(e.i),f2(e.r));
+        v.push(f2(cum(sec[1],c,k).s));
+        v.forEach((t,j)=>T(t,cx(j+1),y+30,j==v.length-1?'bold 20px':'20px',(useTime&&j==2&&!e.v)?'#ff6b6b':col,'center'));
+      }else for(let j=1;j<cols.length;j++)T('–',cx(j),y+30,'20px','#555','center');
+      y+=rh;
+    }
+  });
+  y+=14;x.fillStyle='#333355';x.fillRect(m,y,W-2*m,2);
+  T('Végeredmény (éles)',m,y+50,'bold 24px','#e8e8e8');
+  T(f2(me.s),W-m,y+54,'bold 44px','#00d4aa','right');
+  T(useTime?`Össz pont: ${me.pp} · Össz idő: ${f2(me.ii)}`:`Összesen ${names.length} versenyző`,m,y+90,'18px','#888');
+  return cv;
 }
 </script></body></html>
