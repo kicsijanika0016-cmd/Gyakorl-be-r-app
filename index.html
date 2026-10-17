@@ -62,7 +62,8 @@ td{padding:7px 4px}tr:nth-child(even){background:rgba(255,255,255,.03)}
   <div class="card">
     <div class="mu" style="font-weight:600;margin-bottom:8px">🏆 Végeredmény</div>
     <table><thead><tr><th>#</th><th>Név</th><th>Pont</th><th id="fti">Idő</th><th>Végered.</th></tr></thead><tbody id="fb"></tbody></table>
-    <div class="row"><button class="p" onclick="saveJpg()">📷 Mentés JPEG-be</button><button class="n hidden" id="bs" onclick="shareJpg()">📤 Megosztás</button></div>
+    <div class="row"><button class="p" onclick="saveJpg()">📷 Mentés JPEG-be</button></div>
+    <div class="row hidden" id="bs"><button class="n" onclick="sendTo('com.facebook.orca','Messenger')">💬 Küldés Messengerrel</button><button class="v" onclick="sendTo('com.viber.voip','Viber')">📞 Küldés Viberrel</button></div>
     <div class="row"><button class="s" onclick="back()">← Utolsó kör</button><button class="v" onclick="restart()">🆕 Új futam</button></div>
   </div>
 </div>
@@ -149,7 +150,7 @@ function finish(){
   show('done');
   $('fti').style.display=useTime?'':'none';
   $('fb').innerHTML=ranking().map(x=>`<tr><td>${['🥇','🥈','🥉'][x.pl-1]||x.pl+'.'}</td><td>${esc(nm(x.c))}</td><td>${x.pp}</td>${useTime?`<td>${f2(x.ii)}</td>`:''}<td class="ok"><b>${f2(x.s)}</b></td></tr>`).join('');
-  try{if(native||navigator.canShare&&navigator.canShare({files:[new File(['a'],'a.jpg',{type:'image/jpeg'})]}))$('bs').classList.remove('hidden')}catch(e){}
+  if(native)$('bs').classList.remove('hidden');
 }
 function back(){show('run');ph='eles';ri=EK-1;ci=names.length-1;render()}
 function restart(){if(confirm('Új futam? A jelenlegi eredmények törlődnek (ha nem mentetted JPEG-be).'))show('setup')}
@@ -197,17 +198,19 @@ async function saveJpg(){
     img().toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=fname();document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000)},'image/jpeg',.92);
     return;
   }
-  return shareJpg();
-}
-async function shareJpg(){
-  if(native){
-    try{
-      const b64=img().toDataURL('image/jpeg',.92).split(',')[1];
-      const r=await plug('Filesystem').writeFile({path:fname(),data:b64,directory:'CACHE'});
-      await plug('Share').share({title:'Eredménytáblázat',url:r.uri});
-    }catch(e){if(!/cancel/i.test(String(e)))alert('Megosztási hiba: '+e)}
-    return;
+  try{
+    const t=new Date().toTimeString().slice(0,8).replace(/:/g,'');
+    const b64=img().toDataURL('image/jpeg',.92).split(',')[1];
+    await plug('JpegSaver').save({data:b64,name:fname().replace('.jpg','')+'_'+t+'.jpg'});
+    alert('✅ Elmentve a telefonra: Galéria → Eredmenytablazat album.');
+  }catch(e){
+    alert('A mentés nem sikerült: '+((e&&e.message)||e));
   }
-  img().toBlob(b=>navigator.share({files:[new File([b],fname(),{type:'image/jpeg'})],title:'Eredménytáblázat'}).catch(()=>{}),'image/jpeg',.92);
+}
+async function sendTo(pkg,label){
+  try{
+    const b64=img().toDataURL('image/jpeg',.92).split(',')[1];
+    await plug('JpegSaver').sendTo({data:b64,name:fname(),pkg});
+  }catch(e){alert(label+' nem nyitható meg ('+((e&&e.message)||e)+'). Telepítve van a telefonon?')}
 }
 </script></body></html>
