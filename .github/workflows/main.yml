@@ -22,6 +22,34 @@ jobs:
         run: |
           D=$(dirname $(find android/app/src/main/java -name MainActivity.java))
           cp MainActivity.java JpegSaverPlugin.java "$D/"
+      - name: Ikon es nev
+        run: |
+          python3 -c "import PIL" 2>/dev/null || pip install --break-system-packages pillow
+          sed -i 's#<string name="app_name">[^<]*</string>#<string name="app_name">Eredmény beíró</string>#; s#<string name="title_activity_main">[^<]*</string>#<string name="title_activity_main">Eredmény beíró</string>#' android/app/src/main/res/values/strings.xml
+          python3 - <<'PY'
+          from PIL import Image
+          import os
+          res = 'android/app/src/main/res'
+          src = Image.open('logo.png').convert('RGB')
+          for d, s in {'mdpi': 48, 'hdpi': 72, 'xhdpi': 96, 'xxhdpi': 144, 'xxxhdpi': 192}.items():
+              p = f'{res}/mipmap-{d}'
+              os.makedirs(p, exist_ok=True)
+              im = src.resize((s, s), Image.LANCZOS)
+              im.save(f'{p}/ic_launcher.png')
+              im.save(f'{p}/ic_launcher_round.png')
+          for d, s in {'mdpi': 108, 'hdpi': 162, 'xhdpi': 216, 'xxhdpi': 324, 'xxxhdpi': 432}.items():
+              p = f'{res}/mipmap-{d}'
+              os.makedirs(p, exist_ok=True)
+              c = Image.new('RGB', (s, s), (0, 0, 0))
+              k = int(s * 0.72)
+              c.paste(src.resize((k, k), Image.LANCZOS), ((s - k) // 2, (s - k) // 2))
+              c.save(f'{p}/ic_launcher_foreground.png')
+          os.makedirs(f'{res}/mipmap-anydpi-v26', exist_ok=True)
+          x = '<?xml version="1.0" encoding="utf-8"?>\n<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n    <background android:drawable="@color/ic_launcher_background"/>\n    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>\n</adaptive-icon>\n'
+          for n in ('ic_launcher', 'ic_launcher_round'):
+              open(f'{res}/mipmap-anydpi-v26/{n}.xml', 'w').write(x)
+          open(f'{res}/values/ic_launcher_background.xml', 'w').write('<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="ic_launcher_background">#000000</color>\n</resources>\n')
+          PY
       - run: npx cap sync android
       - name: Debug APK epitese
         run: cd android && chmod +x gradlew && ./gradlew assembleDebug
