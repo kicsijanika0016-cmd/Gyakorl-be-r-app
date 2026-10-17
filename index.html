@@ -191,7 +191,13 @@ function img(){
   return cv;
 }
 const cap=window.Capacitor,native=!!(cap&&cap.isNativePlatform&&cap.isNativePlatform());
-const plug=n=>(cap.Plugins&&cap.Plugins[n])||cap.registerPlugin(n);
+const nat=async(pl,me,o)=>{
+  const P=cap.Plugins&&cap.Plugins[pl];
+  if(P&&P[me])return P[me](o);
+  if(cap.nativePromise)return cap.nativePromise(pl,me,o);
+  if(cap.registerPlugin)return cap.registerPlugin(pl)[me](o);
+  throw new Error('a natív híd nem érhető el');
+};
 const fname=()=>`eredmeny_${$('datum').value||'futam'}.jpg`;
 async function saveJpg(){
   if(!native){
@@ -201,7 +207,7 @@ async function saveJpg(){
   try{
     const t=new Date().toTimeString().slice(0,8).replace(/:/g,'');
     const b64=img().toDataURL('image/jpeg',.92).split(',')[1];
-    await plug('JpegSaver').save({data:b64,name:fname().replace('.jpg','')+'_'+t+'.jpg'});
+    await nat('JpegSaver','save',{data:b64,name:fname().replace('.jpg','')+'_'+t+'.jpg'});
     alert('✅ Elmentve a telefonra: Galéria → Eredmenytablazat album.');
   }catch(e){
     alert('A mentés nem sikerült: '+((e&&e.message)||e));
@@ -210,7 +216,7 @@ async function saveJpg(){
 async function sendTo(pkg,label){
   try{
     const b64=img().toDataURL('image/jpeg',.92).split(',')[1];
-    await plug('JpegSaver').sendTo({data:b64,name:fname(),pkg});
+    await nat('JpegSaver','sendTo',{data:b64,name:fname(),pkg});
   }catch(e){alert(label+' nem nyitható meg ('+((e&&e.message)||e)+'). Telepítve van a telefonon?')}
 }
 </script></body></html>
