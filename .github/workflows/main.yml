@@ -18,12 +18,10 @@ jobs:
         run: mkdir -p www && cp index.html www/
       - run: npm install
       - run: npx cap add android
-      - name: Jogosultsagok
+      - name: Mento kod beepitese
         run: |
-          sed -i '/<\/manifest>/i\    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />' android/app/src/main/AndroidManifest.xml
-          sed -i '/<\/manifest>/i\    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />' android/app/src/main/AndroidManifest.xml
-          sed -i '/<\/manifest>/i\    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />' android/app/src/main/AndroidManifest.xml
-          sed -i '/<\/manifest>/i\    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />' android/app/src/main/AndroidManifest.xml
+          D=$(dirname $(find android/app/src/main/java -name MainActivity.java))
+          cp MainActivity.java JpegSaverPlugin.java "$D/"
       - run: npx cap sync android
       - name: Debug APK epitese
         run: cd android && chmod +x gradlew && ./gradlew assembleDebug
